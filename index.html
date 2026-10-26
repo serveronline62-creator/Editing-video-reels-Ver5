@@ -1,899 +1,993 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Form Laporan Perbaikan - Pure PDF</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <title>Split Screen Video Recorder</title>
+  <style>
+    /* =============== RESET & BASE =============== */
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-    <!-- HANYA MEMUAT LIBRARY JSPDF (TANPA HTML2CANVAS) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    :root {
+      --bg: #0a0a0a;
+      --panel: rgba(20,20,24,0.85);
+      --border: rgba(255,255,255,0.12);
+      --text: #fff;
+      --muted: #888;
+      --accent: #0088ff;
+      --danger: #ff0033;
+      --success: #00c853;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
 
-    <style>
-        /* --- PENGATURAN DASAR & LAYAR --- */
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            background-color: #e2e8f0;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            overflow-x: hidden;
-        }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
 
-        /* Container Tombol */
-        .button-group {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
+    /* =============== APP LAYOUT =============== */
+    .app {
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
 
-        .btn {
-            padding: 10px 20px;
-            font-size: 14px;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s ease;
-        }
+    /* Frame HP rasio 9:16 */
+    .phone-frame {
+      position: relative;
+      width: 100vw;
+      height: 100dvh;
+      max-width: calc(100dvh * 9 / 16);
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
 
-        .btn:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
+    /* =============== SPLIT SCREEN =============== */
+    .screen {
+      position: relative;
+      flex: 1 1 50%;
+      overflow: hidden;
+      background: #0d0d10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-        .btn-print {
-            background-color: #ffffff;
-            color: #1e293b;
-            border: 1px solid #cbd5e1;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-        .btn-print:hover { background-color: #f1f5f9; }
+    .screen video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000;
+      display: block;
+    }
 
-        .btn-download {
-            background-color: #2563eb;
-            color: white;
-            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
-        }
-        .btn-download:hover { background-color: #1d4ed8; }
+    .divider {
+      height: 2px;
+      flex: 0 0 2px;
+      background: linear-gradient(90deg, transparent, #fff, transparent);
+      z-index: 5;
+      box-shadow: 0 0 12px rgba(255,255,255,0.5);
+    }
 
-        /* Catatan khusus tampilan HP (default: disembunyikan) */
-        .mobile-note {
-            display: none;
-            margin: 0 0 14px;
-            font-size: 12px;
-            line-height: 1.5;
-            color: #334155;
-            background: #e0f2fe;
-            border: 1px solid #7dd3fc;
-            border-radius: 8px;
-            padding: 10px 12px;
-        }
+    /* =============== BADGES =============== */
+    .label {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      color: #fff;
+      z-index: 4;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .label.live {
+      background: rgba(255, 0, 50, 0.9);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    .label.live::before { content: "● "; }
+    .label.upload { background: rgba(0, 136, 255, 0.9); }
 
-        /* --- SIMULASI KERTAS A4 (DESKTOP) --- */
-        .page-container {
-            background-color: #ffffff;
-            width: 210mm;
-            height: 297mm;
-            padding: 8mm;
-            box-sizing: border-box;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.55; }
+    }
 
-        /* Garis luar tebal */
-        .outer-border {
-            border: 1px solid #000;
-            padding: 6px;
-            height: 100%;
-            box-sizing: border-box;
-            display: flex;
-        }
+    /* REC badge */
+    .rec-badge {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 7px 16px;
+      border-radius: 999px;
+      background: rgba(255,0,50,0.95);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      font-variant-numeric: tabular-nums;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      z-index: 30;
+      animation: pulse 1.2s infinite;
+      box-shadow: 0 0 24px rgba(255,0,50,0.7);
+    }
+    .rec-badge.show { display: flex; }
+    .rec-badge::before {
+      content: "";
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 8px #fff;
+    }
 
-        /* Grid untuk 12 form (6 baris x 2 kolom) */
-        .table-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: repeat(6, 1fr);
-            gap: 8px 12px;
-            width: 100%;
-            height: 100%;
-        }
+    /* Placeholder */
+    .placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #555;
+      font-size: 13px;
+      text-align: center;
+      padding: 20px;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .placeholder svg { width: 44px; height: 44px; opacity: 0.35; }
+    .placeholder.hidden { opacity: 0; }
 
-        /* --- STYLING TABEL --- */
-        table {
-            width: 100%;
-            height: 100%;
-            border-collapse: collapse;
-            border-spacing: 0;
-            font-size: 10px;
-            table-layout: fixed;
-        }
+    /* =============== CONTROL BAR =============== */
+    .controls {
+      position: absolute;
+      bottom: calc(12px + var(--safe-bottom));
+      left: 0;
+      right: 0;
+      z-index: 20;
+      padding: 0 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
 
-        /* Garis dalam tabel */
-        td {
-            border: 1px solid #000;
-            padding: 2px 5px;
-            vertical-align: middle;
-        }
+    .controls-row {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
 
-        /* Lebar Kolom */
-        .col-label { width: 35%; }
-        .col-input { width: 65%; }
-        .col-sign { width: 35%; }
-        .col-tech { width: 32.5%; text-align: center; }
-        .col-hods { width: 32.5%; text-align: center; }
+    .btn {
+      padding: 9px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      cursor: pointer;
+      transition: transform 0.15s, background 0.2s, opacity 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.94); }
+    .btn:disabled { opacity: 0.35; pointer-events: none; }
+    .btn.active { background: var(--success); border-color: var(--success); }
+    .btn.primary { background: rgba(0,136,255,0.92); border-color: transparent; }
+    .btn.danger  { background: rgba(255,0,50,0.92);  border-color: transparent; }
+    .btn.rec     { background: rgba(255,0,50,0.92);  border-color: transparent; padding: 10px 20px; font-size: 13px; }
+    .btn.rec.recording {
+      background: rgba(80,80,90,0.92);
+      animation: recPulse 1.5s infinite;
+    }
 
-        /* Teks Label */
-        .label-bold {
-            font-weight: bold;
-            font-size: 9px;
-            text-transform: uppercase;
-        }
+    @keyframes recPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,0,50,0.7); }
+      50%      { box-shadow: 0 0 0 10px rgba(255,0,50,0); }
+    }
 
-        .label-italic {
-            font-style: italic;
-            font-size: 9px;
-        }
+    input[type="file"] { display: none; }
 
-        .sub-label {
-            font-size: 9px;
-        }
+    /* =============== MODAL PREVIEW =============== */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      padding-top: calc(16px + var(--safe-top));
+      padding-bottom: calc(16px + var(--safe-bottom));
+    }
+    .modal.show { display: flex; }
 
-        /* Input Area Umum */
-        input[type="text"] {
-            width: 100%;
-            border: none;
-            outline: none;
-            background: transparent;
-            font-family: inherit;
-            font-size: 10px;
-            padding: 0;
-        }
+    .modal-card {
+      width: 100%;
+      max-width: 420px;
+      background: #1a1a1f;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-height: 100%;
+    }
 
-        /* Styling khusus Dropdown (Hanya di Form 1) */
-        select.tech-select {
-            width: 100%;
-            border: none;
-            outline: none;
-            background: transparent;
-            font-family: inherit;
-            font-size: 10px;
-            padding: 0;
-            cursor: pointer;
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            color: #000;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 0px center;
-            background-size: 10px;
-        }
+    .modal-header {
+      padding: 14px 18px;
+      font-size: 15px;
+      font-weight: 700;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0 6px;
+    }
 
-        /* Tampilan Teks Nama Teknisi (Untuk Form 2-12) */
-        .tech-name-top-display {
-            font-size: 10px;
-            display: block;
-            width: 100%;
-            min-height: 14px;
-        }
+    .modal-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
 
-        /* Input khusus untuk area tanda tangan agar memenuhi kotak */
-        .sign-input {
-            height: 100%;
-            min-height: 45px;
-        }
+    .modal-body video {
+      width: 100%;
+      border-radius: 10px;
+      background: #000;
+      max-height: 55vh;
+    }
 
-        /* Pengaturan Tinggi Baris Atas */
-        .row-top { height: 26px; }
-        .row-header { height: 22px; }
+    .modal-info {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
 
-        /* Styling Khusus Sel Tanda Tangan (Teknisi & HoDS) */
-        .sign-cell {
-            padding: 0;
-            vertical-align: top;
-        }
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      flex-direction: column;
+    }
 
-        .sign-container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
+    .modal-actions .btn {
+      justify-content: center;
+      padding: 12px;
+      font-size: 14px;
+      border-radius: 12px;
+    }
 
-        .sign-input-wrapper {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    /* =============== TOAST =============== */
+    .toast {
+      position: fixed;
+      bottom: calc(90px + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(30,30,35,0.95);
+      color: #fff;
+      padding: 11px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.6);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 200;
+      max-width: 85%;
+      text-align: center;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast.error { background: rgba(200,20,40,0.95); }
+    .toast.success { background: rgba(0,150,70,0.95); }
 
-        .sign-name-display {
-            text-align: center;
-            font-size: 8px;
-            font-weight: bold;
-            padding: 2px 0;
-            border-top: 1px solid #000;
-            background-color: #f9f9f9;
-            min-height: 14px;
-            text-transform: uppercase;
-        }
+    /* =============== LOADER =============== */
+    .loader {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 50;
+      color: #fff;
+      font-size: 13px;
+    }
+    .loader.show { display: flex; }
+    .spinner {
+      width: 38px;
+      height: 38px;
+      border: 3px solid rgba(255,255,255,0.15);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ============================================================
-           MODE HANDPHONE / TABLET KECIL
-           (hanya untuk layar — hasil Print & PDF tetap A4)
-           ============================================================ */
-        @media screen and (max-width: 880px) {
-
-            body {
-                padding: 12px 12px calc(88px + env(safe-area-inset-bottom));
-                align-items: stretch;
-                -webkit-text-size-adjust: 100%;
-            }
-
-            /* Tombol aksi jadi bar bawah yang selalu terlihat */
-            .button-group {
-                position: fixed;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                margin: 0;
-                padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-                gap: 10px;
-                background: rgba(255, 255, 255, 0.97);
-                border-top: 1px solid #cbd5e1;
-                box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
-                z-index: 100;
-            }
-
-            .btn {
-                flex: 1 1 0;
-                padding: 13px 8px;
-                font-size: 13px;
-                white-space: nowrap;
-            }
-
-            .mobile-note {
-                display: block;
-            }
-
-            /* "Kertas A4" dilepas menjadi kartu full width */
-            .page-container {
-                width: 100%;
-                height: auto;
-                min-height: 0;
-                padding: 0;
-                background: transparent;
-                box-shadow: none;
-                overflow: visible;
-            }
-
-            .outer-border {
-                border: none;
-                padding: 0;
-                display: block;
-                height: auto;
-            }
-
-            /* 1 kolom, tinggi otomatis */
-            .table-grid {
-                display: grid;
-                grid-template-columns: 1fr;
-                grid-template-rows: none;
-                grid-auto-rows: auto;
-                gap: 14px;
-                height: auto;
-            }
-
-            /* Tiap form jadi kartu tersendiri */
-            .table-grid table {
-                height: auto;
-                font-size: 12px;
-                background: #ffffff;
-                box-shadow: 0 0 0 1px #94a3b8, 0 3px 10px rgba(15, 23, 42, 0.08);
-                border-radius: 6px;
-            }
-
-            td {
-                padding: 6px 8px;
-                font-size: 12px;
-            }
-
-            .row-top,
-            .row-header {
-                height: auto;
-            }
-
-            .label-bold { font-size: 11px; }
-            .label-italic { font-size: 11px; }
-            .sub-label { font-size: 11px; }
-
-            .col-label { width: 38%; }
-            .col-input { width: 62%; }
-            .col-sign  { width: 30%; }
-            .col-tech,
-            .col-hods  { width: auto; }
-
-            /* Input diperbesar: nyaman di HP & mencegah auto-zoom iOS */
-            input[type="text"],
-            select.tech-select {
-                font-size: 16px;
-                padding: 3px 0;
-                line-height: 1.3;
-            }
-
-            select.tech-select {
-                background-size: 12px;
-                background-position: right 2px center;
-            }
-
-            .tech-name-top-display {
-                font-size: 16px;
-                min-height: 24px;
-                padding: 3px 0;
-                line-height: 1.3;
-            }
-
-            .sign-input,
-            .sign-input-tech,
-            .sign-input-hods {
-                min-height: 58px;
-                font-size: 16px;
-            }
-
-            .sign-name-display {
-                font-size: 10px;
-                padding: 5px 2px;
-                min-height: 20px;
-            }
-        }
-
-        /* Layar sangat kecil */
-        @media screen and (max-width: 360px) {
-            .btn { font-size: 12px; padding: 12px 6px; }
-            .col-label { width: 42%; }
-            .col-input { width: 58%; }
-        }
-
-        /* --- PENGATURAN PRINT (CTRL+P) — SELALU A4 --- */
-        @page {
-            size: A4 portrait;
-            margin: 0;
-        }
-
-        @media print {
-            body {
-                background-color: #fff;
-                padding: 0;
-                display: block;
-            }
-
-            .button-group,
-            .mobile-note {
-                display: none !important;
-            }
-
-            .page-container {
-                width: 210mm;
-                height: 297mm;
-                padding: 8mm;
-                box-shadow: none;
-                margin: 0;
-            }
-
-            .outer-border {
-                border: 1px solid #000;
-                padding: 6px;
-                display: flex;
-                height: 100%;
-            }
-
-            .table-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                grid-template-rows: repeat(6, 1fr);
-                gap: 8px 12px;
-                height: 100%;
-            }
-
-            .table-grid table {
-                height: 100%;
-                box-shadow: none;
-                border-radius: 0;
-                font-size: 10px;
-            }
-
-            td { padding: 2px 5px; }
-
-            .row-top { height: 26px; }
-            .row-header { height: 22px; }
-
-            * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-        }
-    </style>
+    /* =============== RESPONSIVE =============== */
+    @media (max-height: 640px) {
+      .btn { padding: 7px 11px; font-size: 11px; }
+      .btn.rec { padding: 9px 16px; }
+    }
+  </style>
 </head>
 <body>
 
-    <!-- Tombol Aksi -->
-    <div class="button-group">
-        <button class="btn btn-print" onclick="window.print()">🖨️ Print Dokumen</button>
-        <button class="btn btn-download" onclick="downloadPurePDF()">📥 Download PDF (Murni)</button>
+<div class="app">
+  <div class="phone-frame" id="phoneFrame">
+
+    <!-- ========== LAYAR ATAS: LIVE ========== -->
+    <div class="screen">
+      <span class="label live">LIVE</span>
+      <video id="liveVideo" autoplay playsinline muted></video>
+      <div class="placeholder" id="livePlaceholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M23 7l-7 5 7 5V7z"/>
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+        </svg>
+        <span>Kamera belum aktif<br/>Tekan tombol 🎥</span>
+      </div>
     </div>
 
-    <!-- Catatan hanya muncul di HP -->
-    <p class="mobile-note">
-        📱 <strong>Mode Handphone:</strong> form ditampilkan satu kolom agar mudah diisi.
-        Hasil <strong>Print</strong> &amp; <strong>Download PDF</strong> tetap <strong>12 form dalam 1 halaman A4</strong>.
-    </p>
+    <div class="divider"></div>
 
-    <!-- Area Kertas -->
-    <div class="page-container" id="pdf-content">
-
-        <!-- Garis Kotak Luar -->
-        <div class="outer-border">
-            <div class="table-grid">
-
-                <!-- ================= FORM 1 (DROPDOWN) ================= -->
-                <table>
-                    <tr class="row-top">
-                        <td class="label-bold col-label">NAMA TEKNISI</td>
-                        <td colspan="2">
-                            <select class="tech-select" onchange="syncTechName(this)">
-                                <option value="" disabled selected>-- Pilih Teknisi --</option>
-                                <option value="YANDRI OTTU">YANDRI OTTU</option>
-                                <option value="HARMINDO LAMMA">HARMINDO LAMMA</option>
-                                <option value="INOSENCIUS FA'OT">INOSENCIUS FA'OT</option>
-                                <option value="RIZALDI ABDULLAH">RIZALDI ABDULLAH</option>
-                                <option value="MUHAMMAD FAUZI">MUHAMMAD FAUZI</option>
-                                <option value="KRISTIAN OPENG">KRISTIAN OPENG</option>
-                            </select>
-                        </td>
-                    </tr>
-                    <tr class="row-top"><td class="label-italic">Keterangan</td><td colspan="2"><input type="text" class="input-keterangan"></td></tr>
-                    <tr class="row-header">
-                        <td rowspan="2" class="label-bold col-sign" style="text-align: center;">TANDATANGAN</td>
-                        <td class="sub-label col-tech">Teknisi</td>
-                        <td class="sub-label col-hods">HoDS</td>
-                    </tr>
-                    <tr>
-                        <td class="col-tech sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-tech" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display sync-tech-name"></div>
-                            </div>
-                        </td>
-                        <td class="col-hods sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-hods" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display">Muhammad Fauzi</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-
-                <!-- ================= FORM 2 ================= -->
-                <table>
-                    <tr class="row-top"><td class="label-bold col-label">NAMA TEKNISI</td><td colspan="2"><span class="tech-name-top-display sync-tech-name"></span></td></tr>
-                    <tr class="row-top"><td class="label-italic">Keterangan</td><td colspan="2"><input type="text" class="input-keterangan"></td></tr>
-                    <tr class="row-header">
-                        <td rowspan="2" class="label-bold col-sign" style="text-align: center;">TANDATANGAN</td>
-                        <td class="sub-label col-tech">Teknisi</td>
-                        <td class="sub-label col-hods">HoDS</td>
-                    </tr>
-                    <tr>
-                        <td class="col-tech sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-tech" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display sync-tech-name"></div>
-                            </div>
-                        </td>
-                        <td class="col-hods sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-hods" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display">Muhammad Fauzi</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-
-                <!-- ================= FORM 3 ================= -->
-                <table>
-                    <tr class="row-top"><td class="label-bold col-label">NAMA TEKNISI</td><td colspan="2"><span class="tech-name-top-display sync-tech-name"></span></td></tr>
-                    <tr class="row-top"><td class="label-italic">Keterangan</td><td colspan="2"><input type="text" class="input-keterangan"></td></tr>
-                    <tr class="row-header">
-                        <td rowspan="2" class="label-bold col-sign" style="text-align: center;">TANDATANGAN</td>
-                        <td class="sub-label col-tech">Teknisi</td>
-                        <td class="sub-label col-hods">HoDS</td>
-                    </tr>
-                    <tr>
-                        <td class="col-tech sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-tech" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display sync-tech-name"></div>
-                            </div>
-                        </td>
-                        <td class="col-hods sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-hods" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display">Muhammad Fauzi</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-
-                <!-- ================= FORM 4 ================= -->
-                <table>
-                    <tr class="row-top"><td class="label-bold col-label">NAMA TEKNISI</td><td colspan="2"><span class="tech-name-top-display sync-tech-name"></span></td></tr>
-                    <tr class="row-top"><td class="label-italic">Keterangan</td><td colspan="2"><input type="text" class="input-keterangan"></td></tr>
-                    <tr class="row-header">
-                        <td rowspan="2" class="label-bold col-sign" style="text-align: center;">TANDATANGAN</td>
-                        <td class="sub-label col-tech">Teknisi</td>
-                        <td class="sub-label col-hods">HoDS</td>
-                    </tr>
-                    <tr>
-                        <td class="col-tech sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-tech" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display sync-tech-name"></div>
-                            </div>
-                        </td>
-                        <td class="col-hods sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-hods" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display">Muhammad Fauzi</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-
-                <!-- ================= FORM 5 ================= -->
-                <table>
-                    <tr class="row-top"><td class="label-bold col-label">NAMA TEKNISI</td><td colspan="2"><span class="tech-name-top-display sync-tech-name"></span></td></tr>
-                    <tr class="row-top"><td class="label-italic">Keterangan</td><td colspan="2"><input type="text" class="input-keterangan"></td></tr>
-                    <tr class="row-header">
-                        <td rowspan="2" class="label-bold col-sign" style="text-align: center;">TANDATANGAN</td>
-                        <td class="sub-label col-tech">Teknisi</td>
-                        <td class="sub-label col-hods">HoDS</td>
-                    </tr>
-                    <tr>
-                        <td class="col-tech sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-tech" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display sync-tech-name"></div>
-                            </div>
-                        </td>
-                        <td class="col-hods sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-hods" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display">Muhammad Fauzi</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-
-                <!-- ================= FORM 6 ================= -->
-                <table>
-                    <tr class="row-top"><td class="label-bold col-label">NAMA TEKNISI</td><td colspan="2"><span class="tech-name-top-display sync-tech-name"></span></td></tr>
-                    <tr class="row-top"><td class="label-italic">Keterangan</td><td colspan="2"><input type="text" class="input-keterangan"></td></tr>
-                    <tr class="row-header">
-                        <td rowspan="2" class="label-bold col-sign" style="text-align: center;">TANDATANGAN</td>
-                        <td class="sub-label col-tech">Teknisi</td>
-                        <td class="sub-label col-hods">HoDS</td>
-                    </tr>
-                    <tr>
-                        <td class="col-tech sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-tech" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display sync-tech-name"></div>
-                            </div>
-                        </td>
-                        <td class="col-hods sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-hods" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display">Muhammad Fauzi</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-
-                <!-- ================= FORM 7 ================= -->
-                <table>
-                    <tr class="row-top"><td class="label-bold col-label">NAMA TEKNISI</td><td colspan="2"><span class="tech-name-top-display sync-tech-name"></span></td></tr>
-                    <tr class="row-top"><td class="label-italic">Keterangan</td><td colspan="2"><input type="text" class="input-keterangan"></td></tr>
-                    <tr class="row-header">
-                        <td rowspan="2" class="label-bold col-sign" style="text-align: center;">TANDATANGAN</td>
-                        <td class="sub-label col-tech">Teknisi</td>
-                        <td class="sub-label col-hods">HoDS</td>
-                    </tr>
-                    <tr>
-                        <td class="col-tech sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-tech" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display sync-tech-name"></div>
-                            </div>
-                        </td>
-                        <td class="col-hods sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-hods" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display">Muhammad Fauzi</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-
-                <!-- ================= FORM 8 ================= -->
-                <table>
-                    <tr class="row-top"><td class="label-bold col-label">NAMA TEKNISI</td><td colspan="2"><span class="tech-name-top-display sync-tech-name"></span></td></tr>
-                    <tr class="row-top"><td class="label-italic">Keterangan</td><td colspan="2"><input type="text" class="input-keterangan"></td></tr>
-                    <tr class="row-header">
-                        <td rowspan="2" class="label-bold col-sign" style="text-align: center;">TANDATANGAN</td>
-                        <td class="sub-label col-tech">Teknisi</td>
-                        <td class="sub-label col-hods">HoDS</td>
-                    </tr>
-                    <tr>
-                        <td class="col-tech sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-tech" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display sync-tech-name"></div>
-                            </div>
-                        </td>
-                        <td class="col-hods sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-hods" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display">Muhammad Fauzi</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-
-                <!-- ================= FORM 9 ================= -->
-                <table>
-                    <tr class="row-top"><td class="label-bold col-label">NAMA TEKNISI</td><td colspan="2"><span class="tech-name-top-display sync-tech-name"></span></td></tr>
-                    <tr class="row-top"><td class="label-italic">Keterangan</td><td colspan="2"><input type="text" class="input-keterangan"></td></tr>
-                    <tr class="row-header">
-                        <td rowspan="2" class="label-bold col-sign" style="text-align: center;">TANDATANGAN</td>
-                        <td class="sub-label col-tech">Teknisi</td>
-                        <td class="sub-label col-hods">HoDS</td>
-                    </tr>
-                    <tr>
-                        <td class="col-tech sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-tech" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display sync-tech-name"></div>
-                            </div>
-                        </td>
-                        <td class="col-hods sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-hods" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display">Muhammad Fauzi</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-
-                <!-- ================= FORM 10 ================= -->
-                <table>
-                    <tr class="row-top"><td class="label-bold col-label">NAMA TEKNISI</td><td colspan="2"><span class="tech-name-top-display sync-tech-name"></span></td></tr>
-                    <tr class="row-top"><td class="label-italic">Keterangan</td><td colspan="2"><input type="text" class="input-keterangan"></td></tr>
-                    <tr class="row-header">
-                        <td rowspan="2" class="label-bold col-sign" style="text-align: center;">TANDATANGAN</td>
-                        <td class="sub-label col-tech">Teknisi</td>
-                        <td class="sub-label col-hods">HoDS</td>
-                    </tr>
-                    <tr>
-                        <td class="col-tech sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-tech" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display sync-tech-name"></div>
-                            </div>
-                        </td>
-                        <td class="col-hods sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-hods" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display">Muhammad Fauzi</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-
-                <!-- ================= FORM 11 ================= -->
-                <table>
-                    <tr class="row-top"><td class="label-bold col-label">NAMA TEKNISI</td><td colspan="2"><span class="tech-name-top-display sync-tech-name"></span></td></tr>
-                    <tr class="row-top"><td class="label-italic">Keterangan</td><td colspan="2"><input type="text" class="input-keterangan"></td></tr>
-                    <tr class="row-header">
-                        <td rowspan="2" class="label-bold col-sign" style="text-align: center;">TANDATANGAN</td>
-                        <td class="sub-label col-tech">Teknisi</td>
-                        <td class="sub-label col-hods">HoDS</td>
-                    </tr>
-                    <tr>
-                        <td class="col-tech sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-tech" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display sync-tech-name"></div>
-                            </div>
-                        </td>
-                        <td class="col-hods sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-hods" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display">Muhammad Fauzi</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-
-                <!-- ================= FORM 12 ================= -->
-                <table>
-                    <tr class="row-top"><td class="label-bold col-label">NAMA TEKNISI</td><td colspan="2"><span class="tech-name-top-display sync-tech-name"></span></td></tr>
-                    <tr class="row-top"><td class="label-italic">Keterangan</td><td colspan="2"><input type="text" class="input-keterangan"></td></tr>
-                    <tr class="row-header">
-                        <td rowspan="2" class="label-bold col-sign" style="text-align: center;">TANDATANGAN</td>
-                        <td class="sub-label col-tech">Teknisi</td>
-                        <td class="sub-label col-hods">HoDS</td>
-                    </tr>
-                    <tr>
-                        <td class="col-tech sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-tech" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display sync-tech-name"></div>
-                            </div>
-                        </td>
-                        <td class="col-hods sign-cell">
-                            <div class="sign-container">
-                                <div class="sign-input-wrapper"><input type="text" class="sign-input-hods" style="text-align: center; height: 100%;"></div>
-                                <div class="sign-name-display">Muhammad Fauzi</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-
-            </div>
-        </div>
+    <!-- ========== LAYAR BAWAH: UPLOAD ========== -->
+    <div class="screen">
+      <span class="label upload">UPLOAD</span>
+      <video id="uploadVideo" playsinline loop></video>
+      <div class="placeholder" id="uploadPlaceholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>Belum ada video<br/>Tekan tombol 📁</span>
+      </div>
     </div>
 
-    <!-- Script Sinkronisasi & Download PDF Murni -->
-    <script>
-        // ============================================================
-        // 1. Sinkronisasi Nama Teknisi (dropdown Form 1 -> semua form)
-        // ============================================================
-        function syncTechName(selectElement) {
-            const selectedName = selectElement.value;
-            document.querySelectorAll('.sync-tech-name').forEach(function (element) {
-                element.innerText = selectedName;
-            });
-        }
+    <!-- ========== BADGE REC ========== -->
+    <div class="rec-badge" id="recBadge">
+      <span id="recTimer">00:00</span>
+    </div>
 
-        // ============================================================
-        // 2. Helper: potong teks agar tidak melebihi lebar kolom PDF
-        // ============================================================
-        function fitText(pdf, text, maxWidth) {
-            let t = (text || '').toString().trim();
-            if (!t) return '';
-            if (pdf.getTextWidth(t) <= maxWidth) return t;
-            while (t.length > 0 && pdf.getTextWidth(t + '…') > maxWidth) {
-                t = t.slice(0, -1);
-            }
-            return t + '…';
-        }
+    <!-- ========== KONTROL ========== -->
+    <div class="controls">
+      <div class="controls-row">
+        <button class="btn primary" id="btnStartCam">🎥 Kamera</button>
+        <button class="btn" id="btnSwitchCam" style="display:none;">🔄</button>
+        <button class="btn" id="btnMic">🎤 Mic OFF</button>
+        <button class="btn" id="btnUpload">📁 Upload</button>
+        <button class="btn" id="btnQuality">HD 720p</button>
+      </div>
+      <div class="controls-row">
+        <button class="btn rec" id="btnRecord">⏺ Mulai Rekam</button>
+      </div>
+    </div>
 
-        // ============================================================
-        // 3. Download PDF Murni (Vektor & Teks) — tetap 12 form / A4
-        //    Layout PDF dihitung manual, jadi TIDAK terpengaruh
-        //    tampilan responsif di layar.
-        // ============================================================
-        async function downloadPurePDF() {
-            const btn = document.querySelector('.btn-download');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '⏳ Memproses...';
-            btn.disabled = true;
+    <!-- ========== LOADER ========== -->
+    <div class="loader" id="loader">
+      <div class="spinner"></div>
+      <span id="loaderText">Memproses...</span>
+    </div>
 
-            try {
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF('p', 'mm', 'a4');
+  </div>
+</div>
 
-                pdf.setFontSize(8);
-                pdf.setLineWidth(0.2);
+<input type="file" id="fileInput" accept="video/*" />
 
-                const startX = 8;
-                const startY = 8;
-                const formWidth = 95;
-                const formHeight = 45;
-                const gapX = 4;
-                const gapY = 2;
+<!-- ========== MODAL PREVIEW ========== -->
+<div class="modal" id="previewModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span>✅ Hasil Rekaman</span>
+      <button id="btnClosePreview">✕</button>
+    </div>
+    <div class="modal-body">
+      <video id="previewVideo" controls playsinline></video>
+      <div class="modal-info" id="previewInfo"></div>
+      <div class="modal-actions">
+        <button class="btn primary" id="btnSaveGallery">💾 Simpan ke Galeri</button>
+        <button class="btn" id="btnDownload">⬇️ Unduh File</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-                const tables = document.querySelectorAll('.table-grid table');
+<!-- ========== TOAST ========== -->
+<div class="toast" id="toast"></div>
 
-                tables.forEach((table, index) => {
-                    const col = index % 2;
-                    const row = Math.floor(index / 2);
-                    const x = startX + (col * (formWidth + gapX));
-                    const y = startY + (row * (formHeight + gapY));
+<script>
+/* ============================================================
+   KONFIGURASI
+   ============================================================ */
+const QUALITY_PRESETS = {
+  '480':  { w: 540,  h: 960,  bitrate: 2_000_000, label: 'SD 480p' },
+  '720':  { w: 720,  h: 1280, bitrate: 4_000_000, label: 'HD 720p' },
+  '1080': { w: 1080, h: 1920, bitrate: 8_000_000, label: 'FHD 1080p' }
+};
+const QUALITY_ORDER = ['480', '720', '1080'];
 
-                    // --- 1. AMBIL DATA DARI HTML ---
-                    let techName = (index === 0)
-                        ? table.querySelector('select').value
-                        : table.querySelector('.tech-name-top-display').innerText;
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  stream: null,
+  facingMode: 'user',
+  micStream: null,
+  micEnabled: false,
+  uploadReady: false,
+  isRecording: false,
+  audioCtx: null,
+  micSource: null,
+  uploadSource: null,
+  mediaRecorder: null,
+  recordedChunks: [],
+  recDest: null,
+  recStartTime: 0,
+  timerInterval: null,
+  drawRAF: null,
+  quality: '720',
+  previewBlob: null,
+  previewUrl: null,
+  previewMime: ''
+};
 
-                    if (techName === '-- Pilih Teknisi --') techName = '';
+/* ============================================================
+   ELEMEN
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const liveVideo         = $('liveVideo');
+const uploadVideo       = $('uploadVideo');
+const livePlaceholder   = $('livePlaceholder');
+const uploadPlaceholder = $('uploadPlaceholder');
+const btnStartCam       = $('btnStartCam');
+const btnSwitchCam      = $('btnSwitchCam');
+const btnMic            = $('btnMic');
+const btnUpload         = $('btnUpload');
+const btnQuality        = $('btnQuality');
+const btnRecord         = $('btnRecord');
+const fileInput         = $('fileInput');
+const recBadge          = $('recBadge');
+const recTimerEl        = $('recTimer');
+const loader            = $('loader');
+const loaderText        = $('loaderText');
+const toast             = $('toast');
+const previewModal      = $('previewModal');
+const previewVideo      = $('previewVideo');
+const previewInfo       = $('previewInfo');
+const btnClosePreview   = $('btnClosePreview');
+const btnSaveGallery    = $('btnSaveGallery');
+const btnDownload       = $('btnDownload');
 
-                    const keterangan    = table.querySelector('.input-keterangan').value;
-                    const techSignInput = table.querySelector('.sign-input-tech').value;
-                    const hodsSignInput = table.querySelector('.sign-input-hods').value;
-                    const techSignName  = table.querySelector('.sync-tech-name').innerText;
-                    const hodsSignName  = 'Muhammad Fauzi';
+/* ============================================================
+   CANVAS OFFSCREEN
+   ============================================================ */
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
 
-                    // --- 2. GAMBAR GARIS TABEL ---
-                    // Kotak luar
-                    pdf.rect(x, y, formWidth, formHeight);
+function applyQuality(q) {
+  const p = QUALITY_PRESETS[q];
+  canvas.width  = p.w;
+  canvas.height = p.h;
+  state.quality = q;
+  btnQuality.textContent = p.label;
+}
 
-                    // Baris 1: NAMA TEKNISI
-                    pdf.line(x, y + 8, x + formWidth, y + 8);
-                    pdf.line(x + 33, y, x + 33, y + 8);
+/* ============================================================
+   UTIL: DRAW COVER (seperti object-fit: cover)
+   ============================================================ */
+function drawCover(video, dx, dy, dw, dh) {
+  if (!video || !video.videoWidth || !video.videoHeight) {
+    ctx.fillStyle = '#0d0d10';
+    ctx.fillRect(dx, dy, dw, dh);
+    return;
+  }
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const srcRatio = vw / vh;
+  const dstRatio = dw / dh;
+  let sx, sy, sw, sh;
+  if (srcRatio > dstRatio) {
+    sh = vh; sw = vh * dstRatio;
+    sx = (vw - sw) / 2; sy = 0;
+  } else {
+    sw = vw; sh = vw / dstRatio;
+    sx = 0; sy = (vh - sh) / 2;
+  }
+  try {
+    ctx.drawImage(video, sx, sy, sw, sh, dx, dy, dw, dh);
+  } catch (e) { /* video belum siap */ }
+}
 
-                    // Baris 2: Keterangan
-                    pdf.line(x, y + 16, x + formWidth, y + 16);
-                    pdf.line(x + 33, y + 8, x + 33, y + 16);
+/* ============================================================
+   DRAW LOOP
+   ============================================================ */
+function startDrawLoop() {
+  if (state.drawRAF) return;
+  const tick = () => {
+    const W = canvas.width, H = canvas.height;
+    const halfH = Math.floor(H / 2);
 
-                    // Baris 3 & 4: Tanda Tangan
-                    // PERBAIKAN: garis horizontal hanya dari x + 33 ke kanan,
-                    // sehingga sel TANDATANGAN (rowspan) tidak terpotong garis.
-                    pdf.line(x + 33, y + 23, x + formWidth, y + 23);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
 
-                    // Garis vertikal kiri & tengah area TTD
-                    pdf.line(x + 33, y + 16, x + 33, y + 45);
-                    pdf.line(x + 64, y + 16, x + 64, y + 45);
+    drawCover(liveVideo,   0, 0,     W, halfH);
+    drawCover(uploadVideo, 0, halfH, W, H - halfH);
 
-                    // Garis pemisah nama di bawah TTD
-                    pdf.line(x + 33, y + 41, x + 64, y + 41);
-                    pdf.line(x + 64, y + 41, x + 95, y + 41);
+    // Divider
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, halfH - 1, W, 2);
 
-                    // --- 3. TULIS TEKS ---
-                    pdf.setFontSize(8);
+    state.drawRAF = requestAnimationFrame(tick);
+  };
+  tick();
+}
 
-                    // Baris 1
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.text('NAMA TEKNISI', x + 2, y + 5.5);
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.text(fitText(pdf, techName, 58), x + 35, y + 5.5);
+function stopDrawLoop() {
+  if (state.drawRAF) cancelAnimationFrame(state.drawRAF);
+  state.drawRAF = null;
+}
 
-                    // Baris 2
-                    pdf.setFont('helvetica', 'italic');
-                    pdf.text('Keterangan', x + 2, y + 13.5);
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.text(fitText(pdf, keterangan, 58), x + 35, y + 13.5);
+/* ============================================================
+   TOAST
+   ============================================================ */
+let toastTimeout;
+function showToast(msg, type = '') {
+  clearTimeout(toastTimeout);
+  toast.textContent = msg;
+  toast.className = 'toast show ' + type;
+  toastTimeout = setTimeout(() => toast.classList.remove('show'), 2800);
+}
 
-                    // Baris 3: header TTD
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.text('TANDATANGAN', x + 2, y + 30);
-                    pdf.text('Teknisi', x + 48.5, y + 20, { align: 'center' });
-                    pdf.text('HoDS',    x + 79.5, y + 20, { align: 'center' });
+/* ============================================================
+   LOADER
+   ============================================================ */
+function showLoader(text = 'Memproses...') {
+  loaderText.textContent = text;
+  loader.classList.add('show');
+}
+function hideLoader() { loader.classList.remove('show'); }
 
-                    // Isi TTD
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.text(fitText(pdf, techSignInput, 28), x + 48.5, y + 36, { align: 'center' });
-                    pdf.text(fitText(pdf, hodsSignInput, 28), x + 79.5, y + 36, { align: 'center' });
+/* ============================================================
+   KAMERA
+   ============================================================ */
+async function startCamera() {
+  try {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Browser tidak mendukung akses kamera.');
+    }
+    if (state.stream) {
+      state.stream.getTracks().forEach(t => t.stop());
+    }
+    state.stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: state.facingMode,
+        width:  { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    });
+    liveVideo.srcObject = state.stream;
+    livePlaceholder.classList.add('hidden');
+    btnSwitchCam.style.display = 'inline-flex';
+    btnStartCam.textContent = '🎥 Kamera ON';
+    btnStartCam.classList.add('active');
+    showToast('Kamera aktif', 'success');
+  } catch (err) {
+    showToast('Kamera gagal: ' + err.message, 'error');
+    console.error(err);
+  }
+}
 
-                    // Nama di bawah TTD
-                    pdf.setFontSize(7);
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.text(fitText(pdf, techSignName, 28), x + 48.5, y + 44, { align: 'center' });
-                    pdf.text(fitText(pdf, hodsSignName, 28), x + 79.5, y + 44, { align: 'center' });
-                });
+/* ============================================================
+   MIC
+   ============================================================ */
+async function toggleMic() {
+  if (state.micEnabled) {
+    if (state.micStream) {
+      state.micStream.getTracks().forEach(t => t.stop());
+    }
+    if (state.micSource) {
+      try { state.micSource.disconnect(); } catch(e) {}
+      state.micSource = null;
+    }
+    state.micStream = null;
+    state.micEnabled = false;
+    btnMic.textContent = '🎤 Mic OFF';
+    btnMic.classList.remove('active');
+    showToast('Mic dimatikan');
+    return;
+  }
+  try {
+    const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.micStream = ms;
+    ensureAudioCtx();
+    // Buat source dari mic stream
+    state.micSource = state.audioCtx.createMediaStreamSource(ms);
+    // JANGAN connect ke speakers (hindari feedback). Akan connect ke recDest saat rekam.
+    state.micEnabled = true;
+    btnMic.textContent = '🎤 Mic ON';
+    btnMic.classList.add('active');
+    showToast('Mic aktif — suara kamu akan direkam', 'success');
+  } catch (err) {
+    showToast('Mic gagal: ' + err.message, 'error');
+  }
+}
 
-                pdf.save('Form Keterangan Fisik Part.pdf');
+/* ============================================================
+   AUDIO CONTEXT
+   ============================================================ */
+function ensureAudioCtx() {
+  if (!state.audioCtx) {
+    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (state.audioCtx.state === 'suspended') {
+    state.audioCtx.resume().catch(() => {});
+  }
+  return state.audioCtx;
+}
 
-            } catch (error) {
-                console.error('Gagal membuat PDF:', error);
-                alert('Gagal mendownload PDF. Silakan coba lagi.');
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-    </script>
+/* ============================================================
+   UPLOAD VIDEO
+   ============================================================ */
+btnUpload.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('video/')) {
+    showToast('File harus berupa video', 'error');
+    return;
+  }
+
+  showLoader('Memuat video...');
+  try {
+    const url = URL.createObjectURL(file);
+    uploadVideo.src = url;
+    uploadVideo.muted = false;
+    uploadVideo.volume = 1;
+
+    await new Promise((resolve, reject) => {
+      uploadVideo.onloadedmetadata = resolve;
+      uploadVideo.onerror = () => reject(new Error('Gagal memuat video'));
+    });
+
+    uploadPlaceholder.classList.add('hidden');
+    state.uploadReady = true;
+
+    // Setup audio source untuk upload (hanya sekali)
+    ensureAudioCtx();
+    if (!state.uploadSource) {
+      state.uploadSource = state.audioCtx.createMediaElementSource(uploadVideo);
+      state.uploadSource.connect(state.audioCtx.destination);
+    }
+
+    uploadVideo.play().catch(() => {});
+    showToast('Video berhasil dimuat', 'success');
+  } catch (err) {
+    showToast('Gagal: ' + err.message, 'error');
+  } finally {
+    hideLoader();
+  }
+});
+
+/* ============================================================
+   REKAM
+   ============================================================ */
+async function startRecording() {
+  if (state.isRecording) return;
+
+  if (!state.stream && !state.uploadReady) {
+    showToast('Aktifkan kamera atau upload video dulu', 'error');
+    return;
+  }
+
+  if (!('MediaRecorder' in window)) {
+    showToast('Browser tidak mendukung perekaman', 'error');
+    return;
+  }
+  if (typeof canvas.captureStream !== 'function') {
+    showToast('Browser tidak mendukung captureStream', 'error');
+    return;
+  }
+
+  // Resume audio
+  ensureAudioCtx();
+
+  // Susun stream
+  const videoStream = canvas.captureStream(30);
+  const tracks = [...videoStream.getVideoTracks()];
+
+  // Audio
+  if (state.audioCtx) {
+    const recDest = state.audioCtx.createMediaStreamDestination();
+    let hasAudio = false;
+    if (state.micSource) { state.micSource.connect(recDest); hasAudio = true; }
+    if (state.uploadSource) { state.uploadSource.connect(recDest); hasAudio = true; }
+    if (hasAudio) {
+      tracks.push(...recDest.stream.getAudioTracks());
+      state.recDest = recDest;
+    }
+  }
+
+  const combinedStream = new MediaStream(tracks);
+
+  // Pilih mimeType
+  const candidates = [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm'
+  ];
+  let mimeType = '';
+  for (const m of candidates) {
+    if (MediaRecorder.isTypeSupported(m)) { mimeType = m; break; }
+  }
+  if (!mimeType) {
+    showToast('Format rekaman tidak didukung', 'error');
+    return;
+  }
+
+  const p = QUALITY_PRESETS[state.quality];
+  const options = {
+    mimeType,
+    videoBitsPerSecond: p.bitrate,
+    audioBitsPerSecond: 128_000
+  };
+
+  try {
+    state.recordedChunks = [];
+    state.mediaRecorder = new MediaRecorder(combinedStream, options);
+    state.previewMime = mimeType;
+
+    state.mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) state.recordedChunks.push(e.data);
+    };
+
+    state.mediaRecorder.onstop = async () => {
+      stopDrawLoop();
+      // Disconnect recDest
+      if (state.recDest) {
+        try {
+          if (state.micSource)    state.micSource.disconnect(state.recDest);
+          if (state.uploadSource) state.uploadSource.disconnect(state.recDest);
+        } catch(e) {}
+        state.recDest = null;
+      }
+
+      const baseType = mimeType.split(';')[0];
+      const blob = new Blob(state.recordedChunks, { type: baseType });
+      state.recordedChunks = [];
+
+      if (blob.size < 1000) {
+        showToast('Rekaman kosong / terlalu pendek', 'error');
+        return;
+      }
+
+      showPreview(blob);
+    };
+
+    startDrawLoop();
+    state.mediaRecorder.start(1000);
+
+    state.isRecording = true;
+    state.recStartTime = Date.now();
+    recBadge.classList.add('show');
+    btnRecord.classList.add('recording');
+    btnRecord.textContent = '⏹ Stop Rekam';
+    state.timerInterval = setInterval(updateRecTimer, 500);
+    updateRecTimer();
+
+    // Disable tombol non-rec
+    [btnStartCam, btnSwitchCam, btnMic, btnUpload, btnQuality].forEach(b => b.disabled = true);
+
+    showToast('Mulai merekam...', 'success');
+  } catch (err) {
+    showToast('Rekam gagal: ' + err.message, 'error');
+    console.error(err);
+  }
+}
+
+function stopRecording() {
+  if (!state.isRecording) return;
+  state.isRecording = false;
+
+  if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+    try { state.mediaRecorder.stop(); } catch(e) {}
+  }
+
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.timerInterval = null;
+  recBadge.classList.remove('show');
+  btnRecord.classList.remove('recording');
+  btnRecord.textContent = '⏺ Mulai Rekam';
+
+  [btnStartCam, btnSwitchCam, btnMic, btnUpload, btnQuality].forEach(b => b.disabled = false);
+}
+
+function updateRecTimer() {
+  const sec = Math.floor((Date.now() - state.recStartTime) / 1000);
+  const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+  const ss = String(sec % 60).padStart(2, '0');
+  recTimerEl.textContent = `${mm}:${ss}`;
+}
+
+/* ============================================================
+   PREVIEW HASIL
+   ============================================================ */
+function showPreview(blob) {
+  // Cleanup URL sebelumnya
+  if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+
+  const url = URL.createObjectURL(blob);
+  state.previewBlob = blob;
+  state.previewUrl = url;
+
+  previewVideo.src = url;
+  previewInfo.textContent = `Ukuran: ${formatBytes(blob.size)} · Format: ${blob.type}`;
+  previewModal.classList.add('show');
+
+  setTimeout(() => previewVideo.play().catch(() => {}), 100);
+}
+
+function closePreview() {
+  previewModal.classList.remove('show');
+  previewVideo.pause();
+  previewVideo.src = '';
+  if (state.previewUrl) {
+    URL.revokeObjectURL(state.previewUrl);
+    state.previewUrl = null;
+  }
+  state.previewBlob = null;
+}
+
+/* ============================================================
+   SIMPAN KE GALERI
+   ============================================================ */
+async function saveToGallery() {
+  if (!state.previewBlob) return;
+
+  const baseType = state.previewMime.split(';')[0];
+  const ext = baseType.includes('mp4') ? 'mp4' : 'webm';
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const filename = `split-${stamp}.${ext}`;
+
+  const file = new File([state.previewBlob], filename, { type: baseType });
+
+  // 1) Coba Web Share API (mobile — bisa simpan ke Galeri/Photos)
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: 'Split Screen Video',
+        text: 'Hasil rekaman Split Screen'
+      });
+      showToast('Tersimpan ke galeri', 'success');
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        showToast('Dibatalkan');
+        return;
+      }
+      console.warn('Share gagal, fallback download', err);
+    }
+  }
+
+  // 2) Fallback: download
+  downloadFile();
+}
+
+function downloadFile() {
+  if (!state.previewBlob) return;
+
+  const baseType = state.previewMime.split(';')[0];
+  const ext = baseType.includes('mp4') ? 'mp4' : 'webm';
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const filename = `split-${stamp}.${ext}`;
+
+  const url = URL.createObjectURL(state.previewBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  showToast('File diunduh ke Downloads', 'success');
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+/* ============================================================
+   EVENT LISTENERS
+   ============================================================ */
+btnStartCam.addEventListener('click', startCamera);
+
+btnSwitchCam.addEventListener('click', () => {
+  state.facingMode = state.facingMode === 'user' ? 'environment' : 'user';
+  startCamera();
+});
+
+btnMic.addEventListener('click', toggleMic);
+
+btnQuality.addEventListener('click', () => {
+  const i = QUALITY_ORDER.indexOf(state.quality);
+  const next = QUALITY_ORDER[(i + 1) % QUALITY_ORDER.length];
+  applyQuality(next);
+  showToast('Kualitas: ' + QUALITY_PRESETS[next].label);
+});
+
+btnRecord.addEventListener('click', () => {
+  if (state.isRecording) stopRecording();
+  else startRecording();
+});
+
+btnClosePreview.addEventListener('click', closePreview);
+btnSaveGallery.addEventListener('click', saveToGallery);
+btnDownload.addEventListener('click', downloadFile);
+
+// Cleanup saat keluar
+window.addEventListener('beforeunload', () => {
+  if (state.stream) state.stream.getTracks().forEach(t => t.stop());
+  if (state.micStream) state.micStream.getTracks().forEach(t => t.stop());
+  if (state.isRecording) stopRecording();
+});
+
+// Init
+applyQuality('720');
+console.log('%c📱 Split Screen Video Recorder Ready', 'color:#0088ff;font-weight:bold;font-size:14px');
+</script>
 
 </body>
 </html>
