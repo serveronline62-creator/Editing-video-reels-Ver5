@@ -36,6 +36,7 @@
     }
 
     .app {
+      height: 100vh;
       height: 100dvh;
       display: flex;
       align-items: center;
@@ -45,7 +46,9 @@
     .phone-frame {
       position: relative;
       width: 100vw;
+      height: 100vh;
       height: 100dvh;
+      max-width: calc(100vh * 9 / 16);
       max-width: calc(100dvh * 9 / 16);
       background: #000;
       display: flex;
@@ -53,7 +56,6 @@
       overflow: hidden;
     }
 
-    /* ============ SCREENS ============ */
     .screen {
       position: relative;
       flex: 1 1 0;
@@ -65,12 +67,9 @@
       justify-content: center;
     }
 
-    /* ==== PROPORSI LAYAR ====
-       Atas  : 0.9  (≈45%)
-       Bawah : 1.1  (≈55%)  → layar upload lebih tinggi, batas naik ke atas
-       Kalau diubah, SPLIT_TOP_RATIO di JS juga harus diubah! */
-    .screen-live   { flex: 0.9 1 0; }
-    .screen-upload { flex: 1.1 1 0; }
+    /* Default awal: 40% / 60% — akan dioverride oleh JS applySplitToLayout() */
+    .screen-live   { flex: 0.8 1 0; }
+    .screen-upload { flex: 1.2 1 0; }
 
     .screen video {
       width: 100%; height: 100%;
@@ -79,13 +78,112 @@
       display: block;
     }
 
+    /* ====== VIDEO UPLOAD: bisa digeser manual ====== */
+    .screen-upload video {
+      object-position: 50% 50%;
+      touch-action: none;
+      cursor: grab;
+      will-change: object-position;
+    }
+    .screen-upload video.grabbing { cursor: grabbing; }
+
+    .pan-reset {
+      position: absolute;
+      right: 10px;
+      bottom: 12px;
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 7;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.15s, background 0.2s, opacity 0.2s;
+    }
+    .pan-reset svg { width: 16px; height: 16px; }
+    .pan-reset:active { transform: scale(0.9); }
+    .pan-reset:hover { background: rgba(0,0,0,0.75); }
+
+    .pan-hint {
+      position: absolute;
+      right: 10px;
+      bottom: 54px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      color: #fff;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 7;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    .pan-hint.show { opacity: 1; transform: translateY(0); }
+    /* =============================================== */
+
+    /* ====== DIVIDER (bisa di-drag untuk atur split LIVE vs UPLOAD) ====== */
     .divider {
       flex: 0 0 2px;
       background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
       z-index: 3;
+      position: relative;
+      cursor: ns-resize;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
-    /* ============ BADGES ============ */
+    /* Area sentuh lebih besar (transparan) */
+    .divider::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 64px;
+      height: 44px;
+      background: transparent;
+    }
+
+    /* Grip handle bulat yang kelihatan */
+    .divider::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.16);
+      border: 1px solid rgba(255,255,255,0.32);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      pointer-events: none;
+      transition: transform 0.15s, background 0.2s, border-color 0.2s;
+      z-index: 1;
+    }
+
+    .divider:hover::after,
+    .divider.dragging::after {
+      background: rgba(99,102,241,0.55);
+      border-color: rgba(139,92,246,0.7);
+      transform: translate(-50%, -50%) scale(1.15);
+    }
+    /* =============================================== */
+
     .badge {
       position: absolute;
       top: 12px;
@@ -118,7 +216,6 @@
       50%      { opacity: 0.4; transform: scale(0.8); }
     }
 
-    /* ============ REC BADGE ============ */
     .rec-badge {
       position: absolute;
       top: calc(12px + var(--safe-top));
@@ -149,7 +246,6 @@
       animation: pulseDot 1s ease-in-out infinite;
     }
 
-    /* ============ PLACEHOLDER ============ */
     .placeholder {
       position: absolute;
       inset: 0;
@@ -175,7 +271,6 @@
     }
     .placeholder.hidden { opacity: 0; }
 
-    /* ============ VIDEO PROGRESS ============ */
     .video-progress {
       position: absolute;
       bottom: 0; left: 0; right: 0;
@@ -194,7 +289,6 @@
       box-shadow: 0 0 8px rgba(99,102,241,0.6);
     }
 
-    /* ============ CONTROL PANEL ============ */
     .control-panel {
       flex: 0 0 auto;
       background: var(--panel);
@@ -213,10 +307,8 @@
       gap: 8px;
     }
 
-    /* Playback circular */
     .circle-btn {
-      width: 42px;
-      height: 42px;
+      width: 42px; height: 42px;
       border-radius: 50%;
       border: 1px solid var(--border);
       background: var(--surface);
@@ -232,15 +324,13 @@
     .circle-btn:disabled { opacity: 0.3; pointer-events: none; }
     .circle-btn:hover { background: var(--surface-hover); }
     .circle-btn.primary {
-      width: 52px;
-      height: 52px;
+      width: 52px; height: 52px;
       background: linear-gradient(135deg, var(--accent), var(--accent-2));
       border-color: transparent;
       box-shadow: 0 4px 16px rgba(99,102,241,0.4);
     }
     .circle-btn.primary svg { width: 22px; height: 22px; }
 
-    /* Action pills */
     .pill {
       padding: 8px 12px;
       border-radius: 12px;
@@ -265,13 +355,8 @@
       border-color: rgba(16,185,129,0.4);
       color: var(--green);
     }
-    .pill.icon-only {
-      padding: 8px;
-      width: 34px;
-      justify-content: center;
-    }
+    .pill.icon-only { padding: 8px; width: 34px; justify-content: center; }
 
-    /* Record button */
     .record-btn {
       width: 100%;
       padding: 14px;
@@ -294,8 +379,7 @@
     .record-btn:active { transform: scale(0.97); }
     .record-btn:disabled { opacity: 0.5; pointer-events: none; }
     .record-btn .rec-indicator {
-      width: 14px;
-      height: 14px;
+      width: 14px; height: 14px;
       border-radius: 50%;
       background: #fff;
       transition: border-radius 0.25s;
@@ -314,7 +398,6 @@
 
     input[type="file"] { display: none; }
 
-    /* ============ MODAL ============ */
     .modal {
       position: fixed;
       inset: 0;
@@ -362,8 +445,7 @@
       background: var(--surface);
       border: none;
       color: var(--muted);
-      width: 32px;
-      height: 32px;
+      width: 32px; height: 32px;
       border-radius: 50%;
       cursor: pointer;
       display: inline-flex;
@@ -422,7 +504,6 @@
       border: 1px solid var(--border);
     }
 
-    /* ============ TOAST ============ */
     .toast {
       position: fixed;
       bottom: calc(220px + var(--safe-bottom));
@@ -448,7 +529,6 @@
     .toast.error { background: rgba(239,68,68,0.95); }
     .toast.success { background: rgba(16,185,129,0.95); }
 
-    /* ============ LOADER ============ */
     .loader {
       position: absolute;
       inset: 0;
@@ -466,8 +546,7 @@
     }
     .loader.show { display: flex; }
     .spinner {
-      width: 40px;
-      height: 40px;
+      width: 40px; height: 40px;
       border: 3px solid rgba(255,255,255,0.15);
       border-top-color: var(--accent);
       border-radius: 50%;
@@ -477,7 +556,6 @@
 
     .hidden { display: none !important; }
 
-    /* ============ RESPONSIVE ============ */
     @media (max-height: 700px) {
       .control-panel { padding: 8px 12px calc(8px + var(--safe-bottom)); gap: 8px; }
       .circle-btn { width: 38px; height: 38px; }
@@ -492,8 +570,7 @@
 <div class="app">
   <div class="phone-frame">
 
-    <!-- ===== TOP SCREEN: LIVE (45%) ===== -->
-    <div class="screen screen-live">
+    <div class="screen screen-live" id="liveScreen">
       <span class="badge live">
         <span class="dot"></span>
         LIVE
@@ -508,10 +585,9 @@
       </div>
     </div>
 
-    <div class="divider"></div>
+    <div class="divider" id="divider" title="Geser untuk atur ukuran LIVE / UPLOAD"></div>
 
-    <!-- ===== BOTTOM SCREEN: UPLOAD (55%, lebih tinggi) ===== -->
-    <div class="screen screen-upload">
+    <div class="screen screen-upload" id="uploadScreen">
       <span class="badge upload">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -520,30 +596,42 @@
         </svg>
         UPLOAD
       </span>
-      <video id="uploadVideo" playsinline loop></video>
+      <video id="uploadVideo" playsinline loop preload="metadata"></video>
       <div class="placeholder" id="uploadPlaceholder">
         <svg viewBox="0 0 24 24">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="17 8 12 3 7 8"/>
           <line x1="12" y1="3" x2="12" y2="15"/>
         </svg>
-        <span>Upload video dulu</span>
+        <span>Upload video dari galeri HP<br>lalu geser untuk atur posisi</span>
       </div>
+
+      <!-- HINT GESER -->
+      <div class="pan-hint" id="panHint">✋ Geser untuk atur posisi</div>
+
+      <!-- RESET POSISI -->
+      <button class="pan-reset hidden" id="btnResetPan" title="Reset posisi video">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <line x1="12" y1="2" x2="12" y2="6"/>
+          <line x1="12" y1="18" x2="12" y2="22"/>
+          <line x1="2" y1="12" x2="6" y2="12"/>
+          <line x1="18" y1="12" x2="22" y2="12"/>
+        </svg>
+      </button>
+
       <div class="video-progress" id="videoProgress">
         <div class="video-progress-fill" id="videoProgressFill"></div>
       </div>
     </div>
 
-    <!-- ===== REC BADGE ===== -->
     <div class="rec-badge" id="recBadge">
       <span class="rec-dot"></span>
       <span id="recTimer">00:00</span>
     </div>
 
-    <!-- ===== CONTROL PANEL ===== -->
     <div class="control-panel">
 
-      <!-- Playback -->
       <div class="ctrl-row">
         <button class="circle-btn" id="btnBack" title="Mundur 5 detik">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
@@ -559,7 +647,6 @@
         </button>
       </div>
 
-      <!-- Actions -->
       <div class="ctrl-row">
         <button class="pill" id="btnStartCam">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -606,7 +693,6 @@
         </button>
       </div>
 
-      <!-- Record -->
       <button class="record-btn" id="btnRecord">
         <span class="rec-indicator"></span>
         <span class="rec-text">Mulai Rekam</span>
@@ -614,7 +700,6 @@
 
     </div>
 
-    <!-- ===== LOADER ===== -->
     <div class="loader" id="loader">
       <div class="spinner"></div>
       <span id="loaderText">Memproses...</span>
@@ -625,7 +710,6 @@
 
 <input type="file" id="fileInput" accept="video/*" />
 
-<!-- ===== PREVIEW MODAL ===== -->
 <div class="modal" id="previewModal">
   <div class="modal-card">
     <div class="modal-header">
@@ -667,20 +751,19 @@
    KONFIGURASI
    ============================================================ */
 const QUALITY_PRESETS = {
-  '480':  { w: 540,  h: 960,  bitrate: 2_000_000, label: 'SD'  },
-  '720':  { w: 720,  h: 1280, bitrate: 4_000_000, label: 'HD'  },
-  '1080': { w: 1080, h: 1920, bitrate: 8_000_000, label: 'FHD' }
+  '480':  { w: 540,  bitrate: 2_000_000, label: 'SD'  },
+  '720':  { w: 720,  bitrate: 4_000_000, label: 'HD'  },
+  '1080': { w: 1080, bitrate: 8_000_000, label: 'FHD' }
 };
 const QUALITY_ORDER = ['480', '720', '1080'];
 const SEEK_STEP = 5;
+const DEFAULT_SPLIT = 0.40;
+const MIN_SPLIT = 0.15;
+const MAX_SPLIT = 0.85;
 
-/* Proporsi layar ATAS pada hasil rekaman.
-   HARUS SAMA dengan CSS:
-     .screen-live   { flex: 0.9 1 0; }
-     .screen-upload { flex: 1.1 1 0; }
-   → 0.9 / (0.9 + 1.1) = 0.45
-   Kalau nilai CSS diubah, ubah angka ini juga. */
-const SPLIT_TOP_RATIO = 0.45;
+/* ✅ TARGET ASPECT RATIO OUTPUT — dipaksa 9:16 (portrait)
+   nilai = height / width = 16 / 9 */
+const TARGET_ASPECT = 16 / 9;
 
 /* ============================================================
    STATE
@@ -693,6 +776,8 @@ const state = {
   mediaRecorder: null, recordedChunks: [], recDest: null,
   recStartTime: 0, timerInterval: null, drawRAF: null,
   quality: '720',
+  splitRatio: DEFAULT_SPLIT,
+  uploadPos: { x: 0.5, y: 0.5 },
   previewBlob: null, previewUrl: null, previewMime: ''
 };
 
@@ -724,8 +809,9 @@ const btnSaveGallery    = $('btnSaveGallery');
 const btnDownload       = $('btnDownload');
 const qualityLabel      = $('qualityLabel');
 const recText           = btnRecord.querySelector('.rec-text');
+const btnResetPan       = $('btnResetPan');
+const panHint           = $('panHint');
 
-/* Playback */
 const btnPlayPause      = $('btnPlayPause');
 const btnBack           = $('btnBack');
 const btnNext           = $('btnNext');
@@ -733,63 +819,260 @@ const btnStop           = $('btnStop');
 const videoProgress     = $('videoProgress');
 const videoProgressFill = $('videoProgressFill');
 
-/* SVG icons untuk play/pause */
+const phoneFrame        = document.querySelector('.phone-frame');
+const liveScreen        = $('liveScreen');
+const uploadScreen      = $('uploadScreen');
+const divider           = $('divider');
+
+const RECORD_LOCKED_BTNS = [btnStartCam, btnSwitchCam, btnMic, btnUpload, btnQuality];
+const RECORD_ACTIVE_BTNS = [btnPlayPause, btnBack, btnNext, btnStop];
+
 const ICON_PLAY  = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
 
 /* ============================================================
-   CANVAS
+   CANVAS — OUTPUT DIPAKSA 9:16
    ============================================================ */
 const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
 
+function getLayoutMetrics() {
+  const liveRect   = liveScreen.getBoundingClientRect();
+  const uploadRect = uploadScreen.getBoundingClientRect();
+
+  const liveH    = liveRect.height;
+  const uploadH  = uploadRect.height;
+  const screensH = liveH + uploadH;
+
+  /* ✅ KUNCI: aspect ratio output dipaksa 9:16, tidak peduli bentuk layar HP.
+     Hasilnya: 540×960, 720×1280, 1080×1920. */
+  const aspect = TARGET_ASPECT;
+
+  /* Proporsi split live vs upload mengikuti state.splitRatio yang diatur
+     lewat drag divider, jadi preview & hasil rekaman selalu konsisten. */
+  const split = (screensH > 0) ? (liveH / screensH) : state.splitRatio;
+
+  return { aspect, split };
+}
+
 function applyQuality(q) {
   const p = QUALITY_PRESETS[q];
+  const { aspect, split } = getLayoutMetrics();
+
   canvas.width = p.w;
-  canvas.height = p.h;
+  canvas.height = Math.max(2, Math.round((p.w * aspect) / 2) * 2);
+
   state.quality = q;
+  state.splitRatio = split;
   qualityLabel.textContent = p.label;
 }
 
 /* ============================================================
-   DRAW COVER
+   SPLIT SCREEN FLEXIBLE — drag divider untuk atur ukuran
    ============================================================ */
-function drawCover(video, dx, dy, dw, dh) {
+function applySplitToLayout() {
+  const r = Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, state.splitRatio));
+  state.splitRatio = r;
+  liveScreen.style.flex   = `${r} 1 0`;
+  uploadScreen.style.flex = `${1 - r} 1 0`;
+}
+
+let splitDrag = null;
+
+function onDivDown(e) {
+  if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return;
+  const liveRect   = liveScreen.getBoundingClientRect();
+  const uploadRect = uploadScreen.getBoundingClientRect();
+  const totalH = liveRect.height + uploadRect.height;
+  if (totalH <= 0) return;
+
+  splitDrag = {
+    pointerId: e.pointerId,
+    startY: e.clientY,
+    startSplit: state.splitRatio,
+    totalH
+  };
+  try { divider.setPointerCapture(e.pointerId); } catch (_) {}
+  divider.classList.add('dragging');
+  e.preventDefault();
+}
+
+function onDivMove(e) {
+  if (!splitDrag || e.pointerId !== splitDrag.pointerId) return;
+  const dy = e.clientY - splitDrag.startY;
+  const newSplit = splitDrag.startSplit + dy / splitDrag.totalH;
+  state.splitRatio = Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, newSplit));
+  applySplitToLayout();
+  e.preventDefault();
+}
+
+function onDivUp(e) {
+  if (!splitDrag) return;
+  if (e && e.pointerId !== undefined && e.pointerId !== splitDrag.pointerId) return;
+  try { divider.releasePointerCapture(splitDrag.pointerId); } catch (_) {}
+  splitDrag = null;
+  divider.classList.remove('dragging');
+}
+
+divider.addEventListener('pointerdown', onDivDown);
+divider.addEventListener('pointermove', onDivMove);
+divider.addEventListener('pointerup', onDivUp);
+divider.addEventListener('pointercancel', onDivUp);
+divider.addEventListener('lostpointercapture', onDivUp);
+
+/* ============================================================
+   POSISI MANUAL VIDEO UPLOAD (PAN / GESER)
+   ============================================================ */
+function applyUploadPosition() {
+  const p = state.uploadPos;
+  uploadVideo.style.objectPosition = `${(p.x * 100).toFixed(3)}% ${(p.y * 100).toFixed(3)}%`;
+}
+
+function resetUploadPosition(silent = false) {
+  state.uploadPos.x = 0.5;
+  state.uploadPos.y = 0.5;
+  applyUploadPosition();
+  if (!silent) showToast('↺ Posisi video direset ke tengah');
+}
+
+function getCoverOverflow(video, w, h) {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (!vw || !vh || !w || !h) return null;
+  const scale = Math.max(w / vw, h / vh);
+  return {
+    x: Math.max(0, vw * scale - w),
+    y: Math.max(0, vh * scale - h)
+  };
+}
+
+const clamp01 = v => Math.min(1, Math.max(0, v));
+
+let pan = null;
+
+function onPanDown(e) {
+  if (!state.uploadReady) return;
+  if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return;
+
+  const rect = uploadVideo.getBoundingClientRect();
+  const ov = getCoverOverflow(uploadVideo, rect.width, rect.height);
+  if (!ov) return;
+  if (ov.x <= 0.5 && ov.y <= 0.5) return;
+
+  pan = {
+    pointerId: e.pointerId,
+    startX: e.clientX,
+    startY: e.clientY,
+    baseX: state.uploadPos.x,
+    baseY: state.uploadPos.y,
+    ovX: ov.x,
+    ovY: ov.y
+  };
+
+  try { uploadVideo.setPointerCapture(e.pointerId); } catch (err) {}
+  uploadVideo.classList.add('grabbing');
+  hidePanHint();
+  e.preventDefault();
+}
+
+function onPanMove(e) {
+  if (!pan || e.pointerId !== pan.pointerId) return;
+
+  const dx = e.clientX - pan.startX;
+  const dy = e.clientY - pan.startY;
+
+  const nx = pan.ovX > 0.5 ? pan.baseX - (dx / pan.ovX) : 0.5;
+  const ny = pan.ovY > 0.5 ? pan.baseY - (dy / pan.ovY) : 0.5;
+
+  state.uploadPos.x = clamp01(nx);
+  state.uploadPos.y = clamp01(ny);
+  applyUploadPosition();
+
+  e.preventDefault();
+}
+
+function onPanUp(e) {
+  if (!pan) return;
+  if (e && e.pointerId !== undefined && e.pointerId !== pan.pointerId) return;
+  try { uploadVideo.releasePointerCapture(pan.pointerId); } catch (err) {}
+  pan = null;
+  uploadVideo.classList.remove('grabbing');
+}
+
+uploadVideo.addEventListener('pointerdown', onPanDown);
+uploadVideo.addEventListener('pointermove', onPanMove);
+uploadVideo.addEventListener('pointerup', onPanUp);
+uploadVideo.addEventListener('pointercancel', onPanUp);
+uploadVideo.addEventListener('lostpointercapture', onPanUp);
+
+let lastTapTime = 0;
+uploadVideo.addEventListener('pointerup', (e) => {
+  if (!state.uploadReady) return;
+  const now = Date.now();
+  if (now - lastTapTime < 300) {
+    resetUploadPosition();
+    lastTapTime = 0;
+  } else {
+    lastTapTime = now;
+  }
+});
+
+btnResetPan.addEventListener('click', (e) => {
+  e.stopPropagation();
+  resetUploadPosition();
+});
+
+let panHintTimer;
+function showPanHint() {
+  panHint.classList.add('show');
+  clearTimeout(panHintTimer);
+  panHintTimer = setTimeout(hidePanHint, 3200);
+}
+function hidePanHint() {
+  clearTimeout(panHintTimer);
+  panHint.classList.remove('show');
+}
+
+/* ============================================================
+   DRAW COVER (mengikuti posisi manual)
+   ============================================================ */
+function drawCover(video, dx, dy, dw, dh, posX = 0.5, posY = 0.5) {
   if (!video || !video.videoWidth || !video.videoHeight) {
     ctx.fillStyle = '#0d0d0f';
     ctx.fillRect(dx, dy, dw, dh);
     return;
   }
   const vw = video.videoWidth, vh = video.videoHeight;
-  const srcRatio = vw / vh, dstRatio = dw / dh;
-  let sx, sy, sw, sh;
-  if (srcRatio > dstRatio) {
-    sh = vh; sw = vh * dstRatio;
-    sx = (vw - sw) / 2; sy = 0;
-  } else {
-    sw = vw; sh = vw / dstRatio;
-    sx = 0; sy = (vh - sh) / 2;
-  }
-  try { ctx.drawImage(video, sx, sy, sw, sh, dx, dy, dw, dh); } catch(e) {}
+
+  const scale = Math.max(dw / vw, dh / vh);
+  const dispW = vw * scale;
+  const dispH = vh * scale;
+  const overX = Math.max(0, dispW - dw);
+  const overY = Math.max(0, dispH - dh);
+
+  const sw = Math.min(vw, dw / scale);
+  const sh = Math.min(vh, dh / scale);
+  const sx = (posX * overX) / scale;
+  const sy = (posY * overY) / scale;
+
+  try { ctx.drawImage(video, sx, sy, sw, sh, dx, dy, dw, dh); } catch (e) {}
 }
 
 function startDrawLoop() {
   if (state.drawRAF) return;
   const tick = () => {
     const W = canvas.width, H = canvas.height;
-    /* Garis pemisah mengikuti proporsi layar (bukan 50/50 lagi) */
-    const splitY = Math.round(H * SPLIT_TOP_RATIO);
+    const splitY = Math.round(H * state.splitRatio);
 
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
 
-    /* Layar atas: LIVE */
-    drawCover(liveVideo,   0, 0,      W, splitY);
+    drawCover(liveVideo, 0, 0, W, splitY, 0.5, 0.5);
 
-    /* Layar bawah: UPLOAD (lebih tinggi) */
-    drawCover(uploadVideo, 0, splitY, W, H - splitY);
+    drawCover(
+      uploadVideo, 0, splitY, W, H - splitY,
+      state.uploadPos.x, state.uploadPos.y
+    );
 
-    /* Garis pemisah */
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.fillRect(0, splitY - 1, W, 2);
 
@@ -831,10 +1114,16 @@ function updateProgressBar() {
   videoProgressFill.style.width = (uploadVideo.currentTime / dur * 100) + '%';
 }
 
-function togglePlayPause() {
+async function togglePlayPause() {
   if (!state.uploadReady) { showToast('Upload video dulu', 'error'); return; }
+  ensureAudioCtx();
   if (uploadVideo.paused) {
-    uploadVideo.play().catch(err => showToast('Gagal play: ' + err.message, 'error'));
+    uploadVideo.muted = false;
+    try {
+      await uploadVideo.play();
+    } catch (err) {
+      showToast('Gagal play: ' + err.message, 'error');
+    }
   } else {
     uploadVideo.pause();
   }
@@ -887,7 +1176,7 @@ videoProgress.addEventListener('click', (e) => {
 /* ============================================================
    KAMERA
    ============================================================ */
-async function startCamera() {
+async function startCamera(silent = false) {
   try {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('Browser tidak mendukung kamera.');
     if (state.stream) state.stream.getTracks().forEach(t => t.stop());
@@ -899,10 +1188,24 @@ async function startCamera() {
     livePlaceholder.classList.add('hidden');
     btnSwitchCam.classList.remove('hidden');
     btnStartCam.classList.add('active');
-    showToast('Kamera aktif', 'success');
+    if (!silent) showToast('Kamera aktif', 'success');
+    return true;
   } catch (err) {
-    showToast('Kamera gagal: ' + err.message, 'error');
+    if (!silent) showToast('Kamera gagal: ' + err.message, 'error');
+    return false;
   }
+}
+
+function waitForVideoDim(video, timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const check = () => {
+      if (video.videoWidth > 0) return resolve(true);
+      if (Date.now() - start > timeoutMs) return resolve(false);
+      setTimeout(check, 50);
+    };
+    check();
+  });
 }
 
 /* ============================================================
@@ -935,15 +1238,32 @@ async function toggleMic() {
    AUDIO CONTEXT
    ============================================================ */
 function ensureAudioCtx() {
-  if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (state.audioCtx.state === 'suspended') state.audioCtx.resume().catch(() => {});
+  if (!state.audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    state.audioCtx = new AC();
+  }
+  if (state.audioCtx.state === 'suspended') {
+    state.audioCtx.resume().catch(() => {});
+  }
   return state.audioCtx;
 }
 
+['click', 'touchstart', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    if (state.audioCtx && state.audioCtx.state === 'suspended') {
+      state.audioCtx.resume().catch(() => {});
+    }
+  }, { passive: true });
+});
+
 /* ============================================================
-   UPLOAD
+   UPLOAD — support galeri HP
    ============================================================ */
-btnUpload.addEventListener('click', () => fileInput.click());
+btnUpload.addEventListener('click', () => {
+  fileInput.value = '';
+  fileInput.click();
+});
 
 fileInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -954,26 +1274,45 @@ fileInput.addEventListener('change', async (e) => {
   try {
     const url = URL.createObjectURL(file);
     uploadVideo.src = url;
-    uploadVideo.muted = false;
-    uploadVideo.volume = 1;
+    uploadVideo.load();
 
     await new Promise((resolve, reject) => {
-      uploadVideo.onloadedmetadata = resolve;
-      uploadVideo.onerror = () => reject(new Error('Gagal memuat video'));
+      const done = () => { uploadVideo.onloadedmetadata = null; uploadVideo.onerror = null; resolve(); };
+      const fail = () => { uploadVideo.onloadedmetadata = null; uploadVideo.onerror = null; reject(new Error('Gagal memuat video')); };
+      uploadVideo.onloadedmetadata = done;
+      uploadVideo.onerror = fail;
+      setTimeout(() => { if (!state.uploadReady && uploadVideo.readyState < 1) fail(); }, 15000);
     });
 
     uploadPlaceholder.classList.add('hidden');
     state.uploadReady = true;
 
+    resetUploadPosition(true);
+    btnResetPan.classList.remove('hidden');
+
     ensureAudioCtx();
-    if (!state.uploadSource) {
-      state.uploadSource = state.audioCtx.createMediaElementSource(uploadVideo);
-      state.uploadSource.connect(state.audioCtx.destination);
+    try {
+      if (!state.uploadSource) {
+        state.uploadSource = state.audioCtx.createMediaElementSource(uploadVideo);
+        state.uploadSource.connect(state.audioCtx.destination);
+      }
+    } catch (e) {
+      console.warn('Audio routing gagal:', e);
     }
 
-    uploadVideo.play().catch(() => {});
+    try {
+      uploadVideo.muted = false;
+      await uploadVideo.play();
+      showToast('Video dimuat — geser untuk atur posisi', 'success');
+    } catch (autoplayErr) {
+      uploadVideo.muted = true;
+      try { await uploadVideo.play(); } catch(e) {}
+      showToast('Video dimuat — ketuk ▶ untuk audio', '');
+    }
+
+    showPanHint();
     updatePlayPauseIcon();
-    showToast('Video berhasil dimuat', 'success');
+    updateProgressBar();
   } catch (err) {
     showToast('Gagal: ' + err.message, 'error');
   } finally {
@@ -982,15 +1321,40 @@ fileInput.addEventListener('change', async (e) => {
 });
 
 /* ============================================================
-   REKAM
+   REKAM — output 9:16
    ============================================================ */
 async function startRecording() {
   if (state.isRecording) return;
-  if (!state.stream && !state.uploadReady) { showToast('Aktifkan kamera atau upload video dulu', 'error'); return; }
+
+  if (!state.stream) {
+    await startCamera(true);
+  }
+
+  if (!state.stream && !state.uploadReady) {
+    showToast('Aktifkan kamera atau upload video dulu', 'error');
+    return;
+  }
+
   if (!('MediaRecorder' in window)) { showToast('Browser tidak mendukung perekaman', 'error'); return; }
   if (typeof canvas.captureStream !== 'function') { showToast('Browser tidak mendukung captureStream', 'error'); return; }
 
   ensureAudioCtx();
+
+  if (state.uploadReady && uploadVideo.paused) {
+    try {
+      uploadVideo.muted = false;
+      await uploadVideo.play();
+    } catch (e) {
+      uploadVideo.muted = true;
+      try { await uploadVideo.play(); } catch (e2) {}
+    }
+  }
+
+  if (state.stream) await waitForVideoDim(liveVideo, 1500);
+  if (state.uploadReady) await waitForVideoDim(uploadVideo, 1500);
+
+  /* ✅ Ukuran canvas di-set di sini → 9:16 (mis. 720×1280) */
+  applyQuality(state.quality);
 
   const videoStream = canvas.captureStream(30);
   const tracks = [...videoStream.getVideoTracks()];
@@ -1058,10 +1422,10 @@ async function startRecording() {
     state.timerInterval = setInterval(updateRecTimer, 500);
     updateRecTimer();
 
-    [btnStartCam, btnSwitchCam, btnMic, btnUpload, btnQuality,
-     btnPlayPause, btnBack, btnNext, btnStop].forEach(b => b.disabled = true);
+    RECORD_LOCKED_BTNS.forEach(b => b.disabled = true);
+    RECORD_ACTIVE_BTNS.forEach(b => b.disabled = false);
 
-    showToast('Mulai merekam...', 'success');
+    showToast('🔴 Merekam 9:16 — kontrol ▶ ⏸ ◀ ▶ ⏹ tetap aktif', 'success');
   } catch (err) {
     showToast('Rekam gagal: ' + err.message, 'error');
   }
@@ -1079,8 +1443,8 @@ function stopRecording() {
   btnRecord.classList.remove('recording');
   recText.textContent = 'Mulai Rekam';
 
-  [btnStartCam, btnSwitchCam, btnMic, btnUpload, btnQuality,
-   btnPlayPause, btnBack, btnNext, btnStop].forEach(b => b.disabled = false);
+  RECORD_LOCKED_BTNS.forEach(b => b.disabled = false);
+  RECORD_ACTIVE_BTNS.forEach(b => b.disabled = false);
 }
 
 function updateRecTimer() {
@@ -1120,11 +1484,11 @@ async function saveToGallery() {
   const baseType = state.previewMime.split(';')[0];
   const ext = baseType.includes('mp4') ? 'mp4' : 'webm';
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-  const file = new File([state.previewBlob], `split-${stamp}.${ext}`, { type: baseType });
+  const file = new File([state.previewBlob], `split-9x16-${stamp}.${ext}`, { type: baseType });
 
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: 'Split Screen Video' });
+      await navigator.share({ files: [file], title: 'Split Screen Video 9:16' });
       showToast('Tersimpan ke galeri', 'success');
       return;
     } catch (err) {
@@ -1142,7 +1506,7 @@ function downloadFile() {
   const url = URL.createObjectURL(state.previewBlob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `split-${stamp}.${ext}`;
+  a.download = `split-9x16-${stamp}.${ext}`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1159,7 +1523,7 @@ function formatBytes(b) {
 /* ============================================================
    EVENT UTAMA
    ============================================================ */
-btnStartCam.addEventListener('click', startCamera);
+btnStartCam.addEventListener('click', () => startCamera());
 btnSwitchCam.addEventListener('click', () => {
   state.facingMode = state.facingMode === 'user' ? 'environment' : 'user';
   startCamera();
@@ -1179,18 +1543,43 @@ btnClosePreview.addEventListener('click', closePreview);
 btnSaveGallery.addEventListener('click', saveToGallery);
 btnDownload.addEventListener('click', downloadFile);
 
-window.addEventListener('beforeunload', () => {
+/* ============================================================
+   RESIZE / ORIENTATION
+   ============================================================ */
+let resizeTimeout;
+function handleResize() {
+  if (state.isRecording) return;
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    applySplitToLayout();
+    applyQuality(state.quality);
+  }, 150);
+}
+window.addEventListener('resize', handleResize);
+window.addEventListener('orientationchange', handleResize);
+
+/* ============================================================
+   CLEANUP
+   ============================================================ */
+function cleanup() {
   if (state.stream) state.stream.getTracks().forEach(t => t.stop());
   if (state.micStream) state.micStream.getTracks().forEach(t => t.stop());
   if (state.isRecording) stopRecording();
-});
+}
+window.addEventListener('pagehide', cleanup);
+window.addEventListener('beforeunload', cleanup);
 
 /* ============================================================
    INIT
    ============================================================ */
 applyQuality('720');
+requestAnimationFrame(() => {
+  applySplitToLayout();       // ← sinkronkan flex layout ke state.splitRatio
+  applyQuality(state.quality);
+});
+applyUploadPosition();
 updatePlayPauseIcon();
-console.log('%c📱 Split Screen Recorder — Modern UI (45/55)', 'color:#6366f1;font-weight:bold;font-size:14px');
+console.log('%c📱 Split Screen Recorder — output 9:16 (720×1280 default)', 'color:#6366f1;font-weight:bold;font-size:14px');
 </script>
 
 </body>
